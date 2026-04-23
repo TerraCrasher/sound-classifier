@@ -1,0 +1,13 @@
+torch>=2.0.0
+transformers>=4.30.0
+soundfile>=0.12.0
+scipy>=1.10.0
+numpy>=1.24.0
+tqdm>=4.65.0
+
+# 선택 (mp3 지원)
+# pydub>=0.25.0
+
+# 선택 (GUI)
+# customtkinter>=5.0.0
+# pygame>=2.5.0

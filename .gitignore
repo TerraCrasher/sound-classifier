@@ -1,0 +1,30 @@
+# 가상환경
+venv/
+.venv/
+
+# 데이터 (자동 생성)
+data/sound_tags.db
+data/sound_tags.csv
+data/ontology.json
+data/category_mapping.json
+
+# 출력
+output/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+*.egg
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+Thumbs.db
+.DS_Store
