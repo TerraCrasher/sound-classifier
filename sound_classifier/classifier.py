@@ -342,6 +342,7 @@ class SoundClassifier:
         done = 0
         skipped = 0
         action_fn = shutil.copy2 if mode == "copy" else shutil.move
+        metadata_map = {}  # {폴더경로: {파일명: 태그정보}}
 
         for row in tqdm(entries, desc=f"📁 {mode} 중", unit="file"):
             src = row[1]
@@ -359,25 +360,46 @@ class SoundClassifier:
             filename = os.path.basename(src)
             dest = os.path.join(dest_dir, filename)
 
-            # 동일 파일명이 이미 존재하면 해시 비교
             if os.path.exists(dest):
                 src_hash = self._file_hash(src)
                 dest_hash = self._file_hash(dest)
                 if src_hash == dest_hash:
                     tqdm.write(f"  ⏭️ 동일 파일 스킵: {filename}")
                     skipped += 1
+                    # 스킵해도 metadata에는 추가
+                    self._add_metadata(metadata_map, dest_dir, filename, row)
                     continue
                 else:
                     dest = self._unique_path(dest)
+                    filename = os.path.basename(dest)
 
             try:
                 action_fn(src, dest)
+                self._add_metadata(metadata_map, dest_dir, filename, row)
                 done += 1
             except Exception as e:
                 tqdm.write(f"  ❌ {filename}: {e}")
                 skipped += 1
 
+        # metadata.json 저장
+        meta_count = 0
+        for folder_path, file_data in metadata_map.items():
+            meta_path = os.path.join(folder_path, "metadata.json")
+            # 기존 metadata.json이 있으면 병합
+            if os.path.exists(meta_path):
+                try:
+                    with open(meta_path, "r", encoding="utf-8") as f:
+                        existing = json.load(f)
+                    existing.update(file_data)
+                    file_data = existing
+                except Exception:
+                    pass
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(file_data, f, ensure_ascii=False, indent=2)
+            meta_count += 1
+
         print(f"\n📊 정리 완료: ✅ {done}개 {mode}, ⚠️ {skipped}개 스킵")
+        print(f"📝 metadata.json 생성: {meta_count}개 폴더")
 
     # ─────────────────────────────────────────────
     #  정리 / 유틸
@@ -411,6 +433,19 @@ class SoundClassifier:
         while os.path.exists(f"{base}_{counter}{ext}"):
             counter += 1
         return f"{base}_{counter}{ext}"
+
+    @staticmethod
+    def _add_metadata(metadata_map, dest_dir, filename, row):
+        """metadata_map에 파일 태그 정보 추가"""
+        if dest_dir not in metadata_map:
+            metadata_map[dest_dir] = {}
+        metadata_map[dest_dir][filename] = {
+            "tag_1": row[5] if len(row) > 5 and row[5] else "",
+            "tag_2": row[6] if len(row) > 6 and row[6] else "",
+            "tag_3": row[7] if len(row) > 7 and row[7] else "",
+            "confidence": round(float(row[8]), 4) if len(row) > 8 and row[8] else 0,
+            "duration": round(float(row[3]), 2) if len(row) > 3 and row[3] else 0
+        }
 
     @staticmethod
     def _file_hash(path, chunk_size=8192):
